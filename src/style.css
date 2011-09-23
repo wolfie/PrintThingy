@@ -1,0 +1,21 @@
+body, table {
+	font-family: "Helvetica Neue", Verdana, sans-serif;
+	font-size: 14px
+}
+
+tr:nth-child(even) { background-color: #eee; }
+tr:nth-child(odd)  { background-color: #fff; }
+
+h1 {
+	border-bottom: 1px solid black;
+}
+
+td {
+	padding: 0.25em 0.5em;
+	border-bottom: 1px solid #aaa;
+	border-collapse: collapse;
+}
+
+tr:first-child > td {
+	border-top: 1px solid #aaa;
+}

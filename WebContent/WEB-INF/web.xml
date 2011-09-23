@@ -14,19 +14,11 @@
 			<description>
 			Vaadin application class to start</description>
 			<param-name>application</param-name>
-			<param-value>com.github.wolfie.printthingy.PrintthingyApplication</param-value>
+			<param-value>com.github.wolfie.printthingy.app.PrintthingyApplication</param-value>
 		</init-param>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>Printthingy Application</servlet-name>
 		<url-pattern>/*</url-pattern>
 	</servlet-mapping>
-	<welcome-file-list>
-		<welcome-file>index.html</welcome-file>
-		<welcome-file>index.htm</welcome-file>
-		<welcome-file>index.jsp</welcome-file>
-		<welcome-file>default.html</welcome-file>
-		<welcome-file>default.htm</welcome-file>
-		<welcome-file>default.jsp</welcome-file>
-	</welcome-file-list>
 </web-app>
