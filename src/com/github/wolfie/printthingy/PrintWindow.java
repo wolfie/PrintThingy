@@ -5,11 +5,11 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringEscapeUtils;
 
-import com.vaadin.data.Container;
 import com.vaadin.data.Item;
 import com.vaadin.data.Property;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.ProgressIndicator;
+import com.vaadin.ui.Table;
 import com.vaadin.ui.Window;
 
 class PrintWindow extends Window {
@@ -18,24 +18,25 @@ class PrintWindow extends Window {
   private static final String IFRAME_NAME = "__iframe";
   private static final String INJECT_FUNCTION = "inject";
 
-  private static final int BREAK_AFTER_AMOUNT = 35;
-
-  private final Container container;
+  private final Table table;
 
   /** The column renderer that will be rolled back to if there's no custom one */
-  private final ColumnRenderer defaultRenderer;
+  private final ColumnRendererEscaped defaultRenderer;
 
   /** Special renderers for a particular column. */
-  private final Map<Object, ColumnRenderer> renderers;
+  private final Map<Object, ColumnRendererEscaped> columnRenderers;
+  private final Map<Class<?>, TypeRenderer<?>> typeRenderers;
 
   private final String cssFileUri;
 
-  public PrintWindow(final Window mainWindow, final Container container,
-      final Map<Object, ColumnRenderer> renderers,
-      final ColumnRenderer defaultRenderer, final String cssFileUri) {
+  public PrintWindow(final Window mainWindow, final Table table,
+      final Map<Object, ColumnRendererEscaped> columnRenderers,
+      final Map<Class<?>, TypeRenderer<?>> typeRenderers,
+      final ColumnRendererEscaped defaultRenderer, final String cssFileUri) {
 
-    this.container = container;
-    this.renderers = renderers;
+    this.table = table;
+    this.columnRenderers = columnRenderers;
+    this.typeRenderers = typeRenderers;
     this.defaultRenderer = defaultRenderer;
     this.cssFileUri = cssFileUri;
 
@@ -44,7 +45,7 @@ class PrintWindow extends Window {
     addComponent(new Label(getIFrameXHTML(), Label.CONTENT_XHTML));
     mainWindow.executeJavaScript(PrintWindow.getInjectCode(getBodyHTML()));
 
-    // closeAfterAWhile();
+    closeAfterAWhile();
   }
 
   private void closeAfterAWhile() {
@@ -112,29 +113,24 @@ class PrintWindow extends Window {
 
     int i = 0;
 
-    if (container != null) {
-      final Collection<?> itemIds = container.getItemIds();
+    if (table != null) {
+      final Collection<?> itemIds = table.getItemIds();
       if (!itemIds.isEmpty()) {
         sb.append("<table cellspacing=0 cellpadding=0>");
+
+        putHeadings(sb);
+
         for (final Object itemId : itemIds) {
           i++;
 
-          String breakAfter = "";
-          if (i % BREAK_AFTER_AMOUNT == 0) {
-            breakAfter = "style='page-break-after:always'";
-          }
-          sb.append("<tr " + breakAfter + ">");
-          final Item item = container.getItem(itemId);
+          sb.append("<tr>");
+          final Item item = table.getItem(itemId);
           for (final Object propertyId : item.getItemPropertyIds()) {
-
-            final ColumnRenderer renderer = getRendererFor(propertyId);
 
             final Property itemProperty = item.getItemProperty(propertyId);
             if (itemProperty != null) {
-              final String xhtmlForCell = renderer.getXHTMLForCell(
-                  itemProperty.getValue(), container);
-              sb.append(String.format("<td>%s</td>",
-                  StringEscapeUtils.escapeXml(xhtmlForCell)));
+              sb.append(String
+                  .format("<td>%s</td>", render(itemId, propertyId)));
             } else {
               sb.append("<td></td>");
             }
@@ -148,16 +144,62 @@ class PrintWindow extends Window {
     return sb.toString();
   }
 
+  private void putHeadings(final StringBuilder sb) {
+    sb.append("<tr>");
+    for (final String columnHeader : table.getColumnHeaders()) {
+      sb.append(String.format("<th>%s</th>", columnHeader));
+    }
+    sb.append("</tr>");
+  }
+
+  private String render(final Object itemId, final Object propertyId) {
+    final Object value = table.getItem(itemId).getItemProperty(propertyId)
+        .getValue();
+    final ColumnRendererEscaped columnRenderer = getColumnRendererFor(propertyId);
+    if (columnRenderer != null) {
+      return columnRenderer.getStringForCell(value);
+    } else {
+      final TypeRenderer<Object> typeRenderer = getTypeRendererFor(propertyId);
+      if (typeRenderer != null && value != null) {
+        return escapeIfNeeded(typeRenderer,
+            typeRenderer.getStringForCell(value));
+      }
+    }
+
+    return defaultRenderer.getStringForCell(value);
+  }
+
+  private String escapeIfNeeded(final Renderer renderer, final String string) {
+    if (renderer instanceof Escaped) {
+      return StringEscapeUtils.escapeXml(string);
+    } else {
+      return string;
+    }
+  }
+
   /**
    * If there's a custom renderer for the given propertyId, return that.
-   * Otherwise this will return {@link #defaultRenderer}
+   * Otherwise, return <code>null</code>
    */
-  private ColumnRenderer getRendererFor(final Object propertyId) {
-    final ColumnRenderer columnRenderer = renderers.get(propertyId);
+  private ColumnRendererEscaped getColumnRendererFor(final Object propertyId) {
+    final ColumnRendererEscaped columnRenderer = columnRenderers
+        .get(propertyId);
     if (columnRenderer != null) {
       return columnRenderer;
     } else {
-      return defaultRenderer;
+      return null;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private TypeRenderer<Object> getTypeRendererFor(final Object propertyId) {
+    final Property property = table.getContainerProperty(table.firstItemId(),
+        propertyId);
+    final TypeRenderer<?> typeRenderer = typeRenderers.get(property.getType());
+    if (typeRenderer != null) {
+      return (TypeRenderer<Object>) typeRenderer;
+    } else {
+      return null;
     }
   }
 

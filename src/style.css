@@ -3,6 +3,10 @@ body, table {
 	font-size: 14px
 }
 
+table {
+	width: 100%;
+}
+
 tr:nth-child(even) { background-color: #eee; }
 tr:nth-child(odd)  { background-color: #fff; }
 
@@ -10,10 +14,18 @@ h1 {
 	border-bottom: 1px solid black;
 }
 
-td {
+td, th {
 	padding: 0.25em 0.5em;
+}
+
+td {
 	border-bottom: 1px solid #aaa;
 	border-collapse: collapse;
+}
+
+th {
+	text-align: left;
+	padding-left: 1em;
 }
 
 tr:first-child > td {
